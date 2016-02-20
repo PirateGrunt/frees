@@ -1,0 +1,32 @@
+---
+title: "Chapter 8"
+output: html_document
+---
+
+```{r}
+library(dplyr)
+```
+
+## Count data
+
+```{r}
+workerDataURL <- "http://instruction.bus.wisc.edu/jfrees/jfreesbooks/PredictiveModelingVol1/files/chapter-8/CountsWorkers.txt"
+wcLossFit <- read.table(workerDataURL, header = TRUE, sep = "\t")
+```
+
+## WC loss data
+
+```{r}
+wcLossURL <- "http://instruction.bus.wisc.edu/jfrees/jfreesbooks/PredictiveModelingVol1/files/chapter-8/LossWorkers.txt"
+dfWC_Loss <- read.table(wcLossURL, header = TRUE, sep = "\t")
+dfFit <- wcLossFit %>% 
+  filter(count > 0
+         , payroll > 0)
+
+fitCP <- lm(log(count) ~ year, offset = log(payroll), data = dfFit)
+```
+
+```{r results = 'asis'}
+pander::pander(fitCP)
+```
+
