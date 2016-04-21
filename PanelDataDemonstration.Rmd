@@ -1,0 +1,92 @@
+---
+title: "Pandel data demo"
+output: html_document
+---
+
+These are my comments on modifications from http://instruction.bus.wisc.edu/jfrees/jfreesbooks/PredictiveModelingVol1/files/chapter-7/PanelDataDemonstration.R. The original script was developed by Edward Frees.
+
+#  GENERATE THE DATA
+
+Quick review: how do we randomly generate an observation from a bivariate normal distribution?
+
+OK, answer here: https://www2.stat.duke.edu/courses/Spring12/sta104.1/Lectures/Lec22.pdf.
+
+If _Z~1~_ and _Z~2~_ are independent standard normal random variables, then:
+
+$X = \mu_{X} + \sigma_{X}Z_1$
+
+$Y = \mu_Y + \sigma_Y [\rho*Z_1 + Z_2\sqrt{1-\rho^2}]$
+
+Note that I'm changing the order of how terms appear in the equation. The Duke professor and Frees have sigma first, which drives me nuts. I think of an expectation being modified, not a constant added to a random variable.
+
+```{r }
+rbivariate <- function(n, mean.x = 70, sd.x=3, mean.y=82, sd.y=7, r=.50) {
+  z1 <- rnorm(n)
+  z2 <- rnorm(n)
+  x <- mean.x + sqrt(1 - r^2) * sd.x * z1 + r * sd.x * z2
+  y <- mean.y + sd.y * z2
+  return(list(x = x, y = y))
+}
+```
+
+Just for kicks, let's try this out a bit.
+
+```{r }
+oldPar <- par(mfrow = c(1, 3))
+
+lstBivar <- rbivariate(50, 100, 20, 100, 20, -.9)
+plot(lstBivar$y ~ lstBivar$x, pch = 19, main = "rho = -0.9")
+
+lstBivar <- rbivariate(50, 100, 20, 100, 20, .1)
+plot(lstBivar$y ~ lstBivar$x, pch = 19, main = "rho = 0.1")
+
+lstBivar <- rbivariate(50, 100, 20, 100, 20, .9)
+plot(lstBivar$y ~ lstBivar$x, pch = 19, main = "rho = 0.9")
+
+par(oldPar)
+```
+
+Groovy. Got it.
+
+```{r }
+set.seed(123457)
+nsamp <- 50
+data1 <- rbivariate(nsamp, mean.x = 70, sd.x = 3, mean.y = 82, sd.y =  7, r = .75)
+eps2 <-  rbivariate(nsamp, mean.x =  1, sd.x = 3, mean.y =  1, sd.y = 14, r = .50)
+
+iter <- rep(1:nsamp,2)
+# time <- sort(rep(1:2, nsamp))
+y <- c(data1$x, 0.95 * data1$x + eps2$x / 2)
+x <- c(data1$y, 1.05 * data1$y + eps2$y / 2)
+newdata <- data.frame(iter, time, y, x)
+```
+
+#  FIGURE. PLOT ONLY THE FIRST YEAR
+```{r }
+plot(data1$x, data1$y, ylab="", xlab="Rating Variable", xlim=c(58,78), ylim=c(60,110), main="Year 1")
+mtext("Loss", side=2, line=1, at=115, cex=1.0, las=1)
+#  NOTE THE STRONG POSITIVE STATISTICAL SIGNIFICANCE
+summary(lm(data1$y ~ data1$x))
+
+#  FIGURE. PLOT BOTH YEARS BUT IGNORE DYNAMIC EFFECT
+plot(x ~ y           , ylab="", xlab="Rating Variable", xlim=c(58,78), ylim=c(60,110), main="Years 1 and 2", data = newdata)
+
+summary(lm(y~x))
+
+#  FIGURE. PLOT CONNECTING THE YEARS ;
+plot(x ~ y, data = newdata
+     , ylab=""
+     , xlab="Rating Variable"
+     , xlim=c(58,78)
+     , ylim=c(60,110)
+     , main="Years 1 and 2")
+
+for (i in iter) {
+  lines(x ~ y, data = subset(newdata, iter == i)) 
+}
+
+mtext("Loss", side=2, line=1, at=115, cex=1.0, las=1)
+
+#  NOTE THE STRONG NEGATIVE STATISTICAL SIGNIFICANCE
+summary(lm(y ~ x+ factor(iter)))
+```
